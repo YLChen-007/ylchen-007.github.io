@@ -8,7 +8,7 @@ export default {
   location: 'Beijing, China',
   email: 'chenyoulong2017@gmail.com',
   github: 'https://github.com/YLChen-007',
-  url: 'https://ylchen-007.github.io/',
+  url: 'https://youlongchen.github.io/',
   description: 'Youlong Chen is a Ph.D. student at the Institute of Computing Technology, Chinese Academy of Sciences, researching program analysis, software security, and AI agent security.',
   headline: ['Program analysis for', 'more secure systems.'],
   introduction: 'I am a Ph.D. student at the Institute of Computing Technology, Chinese Academy of Sciences. My research focuses on understanding how complex software behaves and using that understanding to discover security vulnerabilities.',

@@ -2,7 +2,7 @@
 
 英文个人学术主页，使用 GitHub Pages 发布：
 
-**https://ylchen-007.github.io/**
+**https://youlongchen.github.io/**
 
 页面包含个人简介、研究方向、精选论文、开源贡献、研究数据、安全研究及联系方式。网页本身完全静态，不需要数据库、第三方字体、JavaScript 或付费服务。
 
@@ -35,7 +35,7 @@ npm run preview
 
 ## 发布配置
 
-仓库：`YLChen-007/ylchen-007.github.io`。
+仓库：`YoulongChen/youlongchen.github.io`。
 
 GitHub 仓库 Settings → Pages → Build and deployment → Source 应选择 **GitHub Actions**。工作流为 `.github/workflows/pages.yml`，仅发布构建后的 `dist/`。
 
