@@ -39,22 +39,6 @@ export default {
       links: [{ label: 'Conference program', url: 'https://www.sigsac.org/ccs/CCS2026/program/schedule.html' }]
     }
   ],
-  projects: [
-    {
-      name: 'Apache CloudStack',
-      type: 'OPEN-SOURCE CONTRIBUTION',
-      description: 'Contributed a merged security fix to prevent sensitive information from appearing in SSH helper logs.',
-      url: 'https://github.com/apache/cloudstack/pull/12026',
-      label: 'View merged contribution'
-    },
-    {
-      name: 'DCTaint',
-      type: 'RESEARCH DATA',
-      description: 'A public study dataset of vulnerabilities in distributed systems, including authorization vulnerabilities.',
-      url: 'https://github.com/YLChen-007/DCTaint',
-      label: 'Explore dataset'
-    }
-  ],
   disclosures: [
     {
       project: 'OpenClaw',

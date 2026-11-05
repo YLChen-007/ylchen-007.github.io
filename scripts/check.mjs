@@ -24,6 +24,7 @@ assert.equal((html.match(/<h1\b/g) || []).length, 1, 'Expected one main heading'
 assert.ok(html.includes(site.email) && html.includes(site.name), 'Missing contact details');
 assert.ok(!/TODO|PLACEHOLDER|lorem ipsum|example\.com/i.test(html), 'Unfinished content');
 assert.ok(html.includes('id="blog"') && html.includes('./blog/cpython-htmlparser-quadratic-dos/'), 'Missing blog module');
+assert.ok(!html.includes('id="projects"') && !html.includes('href="#projects"'), 'Removed projects module must not be rendered');
 await checkDocument(html, root);
 const structuredData = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
 assert.equal(structuredData.name, site.name);

@@ -39,7 +39,7 @@ const html = `<!doctype html>
     <div class="header-inner">
       <a class="brand" href="#about" aria-label="${escape(site.name)} — home"><span class="brand-mark" aria-hidden="true">yc.</span><span>${escape(site.name)}</span></a>
       <nav class="site-nav" aria-label="Main navigation">
-        <a href="#about">About</a><a href="#research">Research</a><a href="#publications">Publications</a><a href="#projects">Projects</a><a href="#blog">Blog</a><a href="#contact">Contact <span aria-hidden="true">↗</span></a>
+        <a href="#about">About</a><a href="#research">Research</a><a href="#publications">Publications</a><a href="#blog">Blog</a><a href="#contact">Contact <span aria-hidden="true">↗</span></a>
       </nav>
     </div>
   </header>
@@ -69,16 +69,12 @@ const html = `<!doctype html>
         <div class="section-heading"><h2 id="publications-heading">Selected publications</h2><span class="section-kicker" aria-hidden="true">02 / PAPERS</span></div>
         <div class="publication-list">${site.publications.map(paper => `<article class="publication"><div class="publication-meta"><span class="venue">${escape(paper.venue)}</span><span>${escape(paper.note)}</span></div><h3 class="publication-title">${escape(paper.title)}</h3>${paper.authors.length ? `<p class="authors">${paperAuthors(paper.authors)}</p>` : ''}<p class="publication-description">${escape(paper.description)}</p><div class="publication-links">${paper.links.map(link => external(link.url, link.label)).join('')}</div></article>`).join('')}</div>
       </section>
-      <section id="projects" class="section" aria-labelledby="projects-heading">
-        <div class="section-heading"><h2 id="projects-heading">Code &amp; research artifacts</h2><span class="section-kicker" aria-hidden="true">03 / OPEN SOURCE</span></div>
-        <div class="project-list">${site.projects.map(project => `<article class="project"><div class="project-code" aria-hidden="true">${project.type === 'RESEARCH DATA' ? '[ ]' : '&lt;/&gt;'}</div><div class="project-body"><span class="project-type">${escape(project.type)}</span><h3>${escape(project.name)}</h3><p>${escape(project.description)}</p>${external(project.url, project.label, 'project-link text-link')}</div></article>`).join('')}</div>
-      </section>
       <section id="security" class="section" aria-labelledby="security-heading">
-        <div class="section-heading"><h2 id="security-heading">Security research</h2><span class="section-kicker" aria-hidden="true">04 / DISCLOSURES</span></div>
+        <div class="section-heading"><h2 id="security-heading">Security research</h2><span class="section-kicker" aria-hidden="true">03 / DISCLOSURES</span></div>
         ${site.disclosures.map(item => `<article class="publication"><div class="publication-meta"><span class="venue">${escape(item.project)}</span><span>Reported &amp; fixed</span></div><h3 class="publication-title">${escape(item.title)}</h3><p class="publication-description">${escape(item.description)}</p>${external(item.url, item.label)}</article>`).join('')}
       </section>
       <section id="blog" class="section" aria-labelledby="blog-heading">
-        <div class="section-heading"><h2 id="blog-heading">Blog</h2><span class="section-kicker" aria-hidden="true">05 / NOTES</span></div>
+        <div class="section-heading"><h2 id="blog-heading">Blog</h2><span class="section-kicker" aria-hidden="true">04 / NOTES</span></div>
         <div class="blog-list">${articles.map(article => `<article class="blog-card"><div class="blog-card-meta"><span>${escape(article.category)}</span><time datetime="${escape(article.published)}">${escape(article.dateLabel)}</time><span>${escape(article.readingTime)}</span></div><h3><a href="./blog/${escape(article.slug)}/">${escape(article.title)}</a></h3><p>${escape(article.description)}</p><div class="blog-card-footer"><div class="tag-list">${article.tags.map(tag => `<span>${escape(tag)}</span>`).join('')}</div><a class="text-link" href="./blog/${escape(article.slug)}/">Read article <span aria-hidden="true">→</span></a></div></article>`).join('')}</div>
       </section>
       <section id="contact" class="contact-section" aria-labelledby="contact-heading">
