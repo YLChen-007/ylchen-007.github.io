@@ -9,5 +9,11 @@
     "check": "node scripts/check.mjs",
     "preview": "node scripts/serve.mjs"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "marked": "^18.1.3"
+  }
 }

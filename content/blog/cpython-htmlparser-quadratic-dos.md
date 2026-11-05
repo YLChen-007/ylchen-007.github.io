@@ -1,0 +1,157 @@
+---
+title: "从一次 feed() 到平方级开销：CPython HTMLParser DoS 源码分析"
+description: "分析 CVE-2026-15308 中未闭合 HTML 声明如何在增量解析时被反复复制和扫描，并通过有界网络 EXP 对比修复前后的行为。"
+category: "Vulnerability analysis"
+published: "2026-11-05"
+dateLabel: "2026 年 11 月 5 日"
+readingTime: "约 12 分钟"
+language: "zh-CN"
+tags:
+  - CPython
+  - Algorithmic DoS
+  - HTMLParser
+gistUrl: "https://gist.github.com/YLChen-007/a5f267d2d8769366baaa32de6386de6e"
+---
+
+## 一个链接预览请求，为什么会占住 CPU？
+
+如果一个链接预览服务边下载网页、边把小块文本交给同一个 `HTMLParser`，攻击者控制的未闭合声明就可能让客户端反复处理全部历史输入。问题不在恶意脚本，也不是正则灾难性回溯，而是增量解析状态管理造成的算法复杂度拒绝服务。
+
+聊天、笔记和内容管理系统经常根据用户提交的 URL 生成预览。简化后的业务代码通常会持续读取响应，再把每个数据块送入解析器：
+
+```python
+parser = PreviewParser()
+
+for text_chunk in download_page_in_chunks(url):
+    parser.feed(text_chunk)
+
+parser.close()
+```
+
+如果远端网页以 `<![CDATA[` 开始，随后不断返回普通字符，却迟迟不返回 `]]>`，存在漏洞的实现会保留整段未完成输入。下一块数据到来后，它既复制此前的缓冲区，又重新搜索结束标记。输入越碎，同一段历史数据被处理的次数越多。
+
+> **边界说明**
+>
+> 这是一个用于解释风险的教学场景，不代表某个真实产品已经发生过安全事件。漏洞能否被远程利用，取决于不可信数据是否真正到达这条增量解析路径。
+
+## 漏洞概况与威胁模型
+
+[CVE-2026-15308](https://www.cve.org/CVERecord?id=CVE-2026-15308) 影响 Python 标准库 `html.parser.HTMLParser`。PSF 的记录将其归类为 CWE-400，CVSS v4.0 为 8.7（High）。官方跟踪记录为 [issue #153030](https://github.com/python/cpython/issues/153030)，修复位于 [PR #153031](https://github.com/python/cpython/pull/153031)。
+
+| 分支 | 受影响范围 | 首个修复版本 |
+|---|---|---|
+| 3.10 | `< 3.10.21` | 3.10.21 |
+| 3.11 | `>= 3.11.0, < 3.11.16` | 3.11.16 |
+| 3.12 | `>= 3.12.0, < 3.12.14` | 3.12.14 |
+| 3.13 | `>= 3.13.0, < 3.13.15` | 3.13.15 |
+| 3.14 | `>= 3.14.0, < 3.14.7` | 3.14.7 |
+| 3.15 预发布版 | `>= 3.15.0a1, < 3.15.0b4` | 3.15.0b4 |
+
+并非所有 Python 应用都能被远程攻击。攻击链需要同时满足以下条件：
+
+1. 攻击者能够影响交给 `HTMLParser` 的文本；
+2. 应用把输入拆成许多小块，并复用同一个解析器实例；
+3. 输入包含长时间不闭合的 CDATA、注释、声明、标签或 RAWTEXT 结构；
+4. 应用缺少严格的解码后总长度、执行时间、并发量或进程隔离限制。
+
+`feed()` 的边界由应用的读取方式决定，不能直接等同于一个 TCP 包或 HTTP chunk。即使每个请求都创建新的解析器，只要该实例在请求内接收了大量小块，仍可能触发问题。
+
+## 源码追踪：未闭合 CDATA 如何被反复处理？
+
+以 CPython [v3.15.0b1 的 `Lib/html/parser.py`](https://github.com/python/cpython/blob/v3.15.0b1/Lib/html/parser.py) 为基线。存在漏洞的 `feed()` 每次都会直接拼接字符串，并立即进入解析：
+
+```python
+self.rawdata = self.rawdata + data
+self.goahead(0)
+```
+
+`goahead()` 从位置 0 开始。遇到 `<!` 后进入 `parse_html_declaration()`，CDATA 分支搜索结束标记：
+
+```python
+j = rawdata.find("]]>", i + 9)
+if j < 0:
+    return -1
+```
+
+`-1` 表示当前数据还不完整，需要等待后续输入。回到 `goahead()` 后循环退出；由于解析位置仍为 0，最后的 `rawdata[i:]` 保留了整个未完成结构。
+
+```text
+feed(data)
+  → 复制 rawdata
+  → goahead(0)
+  → find("]]>")
+  → 返回 -1，全部保留
+```
+
+| 调用 | `rawdata` 长度 | 搜索起点 | 保留内容 |
+|---|---:|---:|---|
+| 前缀 | 9 | 9 | 全部 9 字符 |
+| 第 1 个数据块 | 73 | 9 | 前缀 + 64 字符 |
+| 第 2 个数据块 | 137 | 9 | 前缀 + 128 字符 |
+| 第 3 个数据块 | 201 | 9 | 前缀 + 192 字符 |
+
+## 为什么是 O(N²)？
+
+令有效载荷总长度为 *N*，固定块大小为 *C*，调用次数为 *M = N/C*。第 *k* 次输入后，缓冲区约为 *kC* 字符。漏洞路径产生两份同阶的重复工作：
+
+- **重复复制：** Python 字符串不可变，`rawdata + data` 每次都要复制累计缓冲区；
+- **重复搜索：** 结束标记不存在时，`find()` 每次都要重新搜索累计缓冲区。
+
+> **T = Θ(C + 2C + ··· + MC) = Θ(CM²) = Θ(N² / C)**
+
+当应用使用固定大小的读取块，即 *C* 是常数时，**T(N) = Θ(N²)**。相同内容如果一次性传给 `feed()`，只需要有限次复制和搜索，成本接近 O(N)。
+
+这里应区分累计工作量和峰值内存：扫描与复制的累计处理量可以达到 O(N²)，某一时刻保留的 `rawdata` 大小仍约为 O(N)。
+
+## 网络 EXP：服务端到 Python 解析客户端
+
+为了验证真实数据流，实验使用一个有界恶意 HTTP 服务端和两个不同补丁版本的 Python 客户端。完整脚本位于 [Secret Gist](https://gist.github.com/YLChen-007/a5f267d2d8769366baaa32de6386de6e)。
+
+```text
+exp_server.py（HTTP 服务端）
+        ↓ Compose 内部网络
+urllib 客户端每次 read(64)
+        ↓
+exp_client.py 调用 HTMLParser.feed()
+```
+
+服务端的 `/normal` 返回 1,280,000 字节普通文本；`/exp` 返回 `<![CDATA[`、20,000 个 64 字节数据块，最后再发送 `]]>`。最终闭合保证实验能够有界退出，CPU 开销来自闭合前的 20,000 次增量解析。
+
+| 客户端 | 响应 | 接收字节 | `feed()` 次数 | CPU 时间 |
+|---|---|---:|---:|---:|
+| Python 3.14.4 | 正常正文 | 1,280,000 | 20,000 | 0.026601 s |
+| **Python 3.14.4** | **恶意 CDATA** | **1,280,012** | **20,001** | **3.159104 s** |
+| Python 3.14.7 | 相同恶意响应 | 1,280,012 | 20,001 | 0.027204 s |
+
+- **118.76×：** Python 3.14.4 恶意响应 / 正常响应；
+- **116.13×：** Python 3.14.4 / 3.14.7 相同恶意响应。
+
+两个版本收到完全相同的恶意响应，差异落在解析器实现，而不是服务端数据。客户端的 `response.read(64)` 决定 `feed()` 边界；即使 TCP 合并服务端写入，应用仍以最多 64 字节为单位调用解析器。
+
+> **实验隔离**
+>
+> Compose 网络设置为 `internal: true`，没有宿主端口映射，客户端地址固定为内部服务。脚本不接受外部目标参数，结束时会清理容器和网络。
+
+## 补丁为什么等待缓冲区翻倍？
+
+[主分支修复](https://github.com/python/cpython/commit/bcf98ddbc40ec9b3ee87da0124a5660b19b7e606)增加了 `_pending`、`_pending_len` 和 `_parse_threshold`。新数据先进入列表；只有积累到阈值后才合并并重试解析。如果本轮没有消费任何输入，阈值被设为当前缓冲区长度，也就是等到缓冲区大约翻倍后再扫描。
+
+> **1 + 2 + 4 + ··· + N < 2N**
+
+重试规模从线性序列变为几何序列，重复搜索和拼接的累计工作被压回摊销 O(N)。如果解析取得进展，阈值恢复为 1；`close()` 则会先合并剩余待处理数据，再完成 EOF 解析。
+
+## 结论
+
+审计增量解析器时，不能只看一次完整解析的复杂度。更重要的问题是：未完成输入如何保存、下一轮从哪里开始，以及没有取得进展时何时再次复制和扫描历史数据。
+
+本漏洞中，`return -1`、`rawdata[i:]` 和每次 `feed()` 立即重试，单独看都合理；组合后却让固定小块输入产生 O(N²) 的累计工作。修复没有取消增量解析，而是通过暂存数据和指数退避式阈值，把无进展重试恢复到摊销 O(N)。
+
+### 参考资料与致谢
+
+- [CVE-2026-15308 官方记录](https://www.cve.org/CVERecord?id=CVE-2026-15308)
+- [CPython issue #153030](https://github.com/python/cpython/issues/153030)
+- [CPython PR #153031](https://github.com/python/cpython/pull/153031)
+- [CPython v3.15.0b1 源码](https://github.com/python/cpython/blob/v3.15.0b1/Lib/html/parser.py)
+- [有界网络 EXP](https://gist.github.com/YLChen-007/a5f267d2d8769366baaa32de6386de6e)
+
+CVE 记录将 Edward-x（YLChen-007）列为报告者，Serhiy Storchaka 列为修复开发者，Gregory P. Smith 列为修复审阅者，Seth Larson 列为协调者。

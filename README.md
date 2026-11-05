@@ -16,19 +16,44 @@
 - `disclosures`：已公开的漏洞报告。
 - `email`：联系邮箱。
 
-博客正文位于 `content/`，每篇文章由独立的 `.mjs` 内容文件描述。当前文章：
+博客正文位于 `content/blog/`，构建器会自动读取其中所有 `.md` 文件。当前文章：
 
-- `content/htmlparser-quadratic-dos.mjs`：CVE-2026-15308 / CPython `HTMLParser` 算法复杂度 DoS 源码分析与网络 EXP。
+- `content/blog/cpython-htmlparser-quadratic-dos.md`：CVE-2026-15308 / CPython `HTMLParser` 算法复杂度 DoS 源码分析与网络 EXP。
 
-视觉样式位于 `assets/style.css`，首页与文章页结构位于 `scripts/build.mjs`。构建结果会同时生成首页、`/blog/<slug>/` 永久链接和 sitemap 条目。
+新增文章时，只需上传一个小写连字符命名的 Markdown 文件，例如 `content/blog/my-new-post.md`：
+
+```md
+---
+title: "文章标题"
+description: "显示在首页卡片和搜索摘要中的介绍"
+category: "Vulnerability analysis"
+published: "2026-11-05"
+dateLabel: "2026 年 11 月 5 日"
+readingTime: "约 10 分钟"
+language: "zh-CN"
+tags:
+  - Python
+  - Security
+gistUrl: "https://gist.github.com/..."
+---
+
+## 第一节
+
+正文使用标准 Markdown。
+```
+
+文件名会成为文章 URL，例如 `my-new-post.md` 对应 `/blog/my-new-post/`。二级标题会自动生成侧边目录；文章会按 `published` 倒序显示在首页，并自动加入 sitemap。`gistUrl`、`dateLabel`、`readingTime`、`language`、`category` 和 `tags` 可以省略。
+
+视觉样式位于 `assets/style.css`，Markdown 加载器位于 `scripts/blog.mjs`，首页与文章页结构位于 `scripts/build.mjs`。
 
 可以直接在 GitHub 网页中编辑这些文件并提交到 `main`。GitHub Actions 会构建、检查并自动更新网站，不需要手动上传 `dist/`。
 
 ## 本地预览
 
-需要 Node.js 22 或更高版本，无须 `npm install`。
+需要 Node.js 22 或更高版本。首次检出或依赖更新后先安装依赖：
 
 ```sh
+npm ci
 npm run build
 npm run check
 npm run preview

@@ -1,8 +1,8 @@
-import { mkdir, writeFile, copyFile } from 'node:fs/promises';
+import { mkdir, writeFile, copyFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import site from '../site.config.mjs';
-import htmlParserArticle from '../content/htmlparser-quadratic-dos.mjs';
+import { loadArticles } from './blog.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = path.join(root, 'dist');
@@ -12,9 +12,9 @@ const githubIcon = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="tr
 const mailIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg>';
 const paperAuthors = authors => authors.map(author => author === site.name ? `<strong>${escape(author)}</strong>` : escape(author)).join(', ');
 const schema = JSON.stringify({ '@context': 'https://schema.org', '@type': 'Person', name: site.name, url: site.url, email: site.email, jobTitle: site.role, affiliation: { '@type': 'Organization', name: site.affiliation, url: site.affiliationUrl }, sameAs: [site.github] }).replace(/</g, '\\u003c');
-const articles = [htmlParserArticle];
+const articles = await loadArticles(path.join(root, 'content', 'blog'));
 const articleUrl = article => `${site.url}blog/${article.slug}/`;
-const articleSchema = article => JSON.stringify({ '@context': 'https://schema.org', '@type': 'BlogPosting', headline: article.title, description: article.description, datePublished: article.published, dateModified: article.published, inLanguage: 'zh-CN', mainEntityOfPage: articleUrl(article), author: { '@type': 'Person', name: site.name, url: site.url } }).replace(/</g, '\\u003c');
+const articleSchema = article => JSON.stringify({ '@context': 'https://schema.org', '@type': 'BlogPosting', headline: article.title, description: article.description, datePublished: article.published, dateModified: article.published, inLanguage: article.language, mainEntityOfPage: articleUrl(article), author: { '@type': 'Person', name: site.name, url: site.url } }).replace(/</g, '\\u003c');
 
 const html = `<!doctype html>
 <html lang="en">
@@ -88,7 +88,7 @@ const html = `<!doctype html>
 `;
 
 const articleHtml = article => `<!doctype html>
-<html lang="zh-CN">
+<html lang="${escape(article.language)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -110,7 +110,7 @@ const articleHtml = article => `<!doctype html>
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="../../" aria-label="${escape(site.name)} — home"><span class="brand-mark" aria-hidden="true">yc.</span><span>${escape(site.name)}</span></a>
-      <nav class="site-nav" aria-label="Article navigation"><a href="../../">Home</a><a href="../../#blog">Blog</a><a href="${escape(article.gistUrl)}">EXP <span aria-hidden="true">↗</span></a></nav>
+      <nav class="site-nav" aria-label="Article navigation"><a href="../../">Home</a><a href="../../#blog">Blog</a>${article.gistUrl ? `<a href="${escape(article.gistUrl)}">EXP <span aria-hidden="true">↗</span></a>` : ''}</nav>
     </div>
   </header>
   <main id="article" class="article-shell">
@@ -123,14 +123,15 @@ const articleHtml = article => `<!doctype html>
       <div class="tag-list">${article.tags.map(tag => `<span>${escape(tag)}</span>`).join('')}</div>
     </header>
     <div class="article-layout">
-      <aside class="article-toc"><p>ON THIS PAGE</p><nav aria-label="文章目录">${article.toc.map(([id, label], index) => `<a href="#${escape(id)}"><span>${String(index + 1).padStart(2, '0')}</span>${escape(label)}</a>`).join('')}</nav><a class="toc-source" href="${escape(article.gistUrl)}">View EXP on Gist <span aria-hidden="true">↗</span></a></aside>
-      <article class="article-content">${article.content}</article>
+      <aside class="article-toc"><p>ON THIS PAGE</p><nav aria-label="文章目录">${article.toc.map(([id, label], index) => `<a href="#${escape(id)}"><span>${String(index + 1).padStart(2, '0')}</span>${escape(label)}</a>`).join('')}</nav>${article.gistUrl ? `<a class="toc-source" href="${escape(article.gistUrl)}">View EXP on Gist <span aria-hidden="true">↗</span></a>` : ''}</aside>
+      <article class="article-content">${article.html}</article>
     </div>
   </main>
   <footer class="site-footer"><div class="footer-inner"><p>© ${new Date().getUTCFullYear()} ${escape(site.name)}</p><p>Program analysis · Software security</p><a href="#article">返回顶部 <span aria-hidden="true">↑</span></a></div></footer>
 </body>
 </html>`;
 
+await rm(output, { recursive: true, force: true });
 await mkdir(path.join(output, 'assets'), { recursive: true });
 await writeFile(path.join(output, 'index.html'), html);
 for (const article of articles) {
