@@ -2,6 +2,7 @@ import { mkdir, writeFile, copyFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import site from '../site.config.mjs';
+import htmlParserArticle from '../content/htmlparser-quadratic-dos.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = path.join(root, 'dist');
@@ -11,6 +12,9 @@ const githubIcon = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="tr
 const mailIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg>';
 const paperAuthors = authors => authors.map(author => author === site.name ? `<strong>${escape(author)}</strong>` : escape(author)).join(', ');
 const schema = JSON.stringify({ '@context': 'https://schema.org', '@type': 'Person', name: site.name, url: site.url, email: site.email, jobTitle: site.role, affiliation: { '@type': 'Organization', name: site.affiliation, url: site.affiliationUrl }, sameAs: [site.github] }).replace(/</g, '\\u003c');
+const articles = [htmlParserArticle];
+const articleUrl = article => `${site.url}blog/${article.slug}/`;
+const articleSchema = article => JSON.stringify({ '@context': 'https://schema.org', '@type': 'BlogPosting', headline: article.title, description: article.description, datePublished: article.published, dateModified: article.published, inLanguage: 'zh-CN', mainEntityOfPage: articleUrl(article), author: { '@type': 'Person', name: site.name, url: site.url } }).replace(/</g, '\\u003c');
 
 const html = `<!doctype html>
 <html lang="en">
@@ -35,7 +39,7 @@ const html = `<!doctype html>
     <div class="header-inner">
       <a class="brand" href="#about" aria-label="${escape(site.name)} — home"><span class="brand-mark" aria-hidden="true">yc.</span><span>${escape(site.name)}</span></a>
       <nav class="site-nav" aria-label="Main navigation">
-        <a href="#about">About</a><a href="#research">Research</a><a href="#publications">Publications</a><a href="#projects">Projects</a><a href="#contact">Contact <span aria-hidden="true">↗</span></a>
+        <a href="#about">About</a><a href="#research">Research</a><a href="#publications">Publications</a><a href="#projects">Projects</a><a href="#blog">Blog</a><a href="#contact">Contact <span aria-hidden="true">↗</span></a>
       </nav>
     </div>
   </header>
@@ -73,6 +77,10 @@ const html = `<!doctype html>
         <div class="section-heading"><h2 id="security-heading">Security research</h2><span class="section-kicker" aria-hidden="true">04 / DISCLOSURES</span></div>
         ${site.disclosures.map(item => `<article class="publication"><div class="publication-meta"><span class="venue">${escape(item.project)}</span><span>Reported &amp; fixed</span></div><h3 class="publication-title">${escape(item.title)}</h3><p class="publication-description">${escape(item.description)}</p>${external(item.url, item.label)}</article>`).join('')}
       </section>
+      <section id="blog" class="section" aria-labelledby="blog-heading">
+        <div class="section-heading"><h2 id="blog-heading">Blog</h2><span class="section-kicker" aria-hidden="true">05 / NOTES</span></div>
+        <div class="blog-list">${articles.map(article => `<article class="blog-card"><div class="blog-card-meta"><span>${escape(article.category)}</span><time datetime="${escape(article.published)}">${escape(article.dateLabel)}</time><span>${escape(article.readingTime)}</span></div><h3><a href="./blog/${escape(article.slug)}/">${escape(article.title)}</a></h3><p>${escape(article.description)}</p><div class="blog-card-footer"><div class="tag-list">${article.tags.map(tag => `<span>${escape(tag)}</span>`).join('')}</div><a class="text-link" href="./blog/${escape(article.slug)}/">Read article <span aria-hidden="true">→</span></a></div></article>`).join('')}</div>
+      </section>
       <section id="contact" class="contact-section" aria-labelledby="contact-heading">
         <p class="eyebrow">LET’S CONNECT</p><h2 id="contact-heading" class="contact-title">Have a research question<br>or an idea to explore?</h2><p>I welcome conversations about program analysis, software security, and AI agents.</p><a class="email-link" href="mailto:${escape(site.email)}">${escape(site.email)} <span aria-hidden="true">↗</span></a>
       </section>
@@ -83,11 +91,60 @@ const html = `<!doctype html>
 </html>
 `;
 
+const articleHtml = article => `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf9f6">
+  <title>${escape(article.title)} | ${escape(site.name)}</title>
+  <meta name="description" content="${escape(article.description)}">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="${escape(article.title)}">
+  <meta property="og:description" content="${escape(article.description)}">
+  <meta property="og:url" content="${escape(articleUrl(article))}">
+  <meta property="article:published_time" content="${escape(article.published)}">
+  <link rel="canonical" href="${escape(articleUrl(article))}">
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../assets/style.css">
+  <script type="application/ld+json">${articleSchema(article)}</script>
+</head>
+<body class="article-page">
+  <a class="skip-link" href="#article">跳至正文</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="../../" aria-label="${escape(site.name)} — home"><span class="brand-mark" aria-hidden="true">yc.</span><span>${escape(site.name)}</span></a>
+      <nav class="site-nav" aria-label="Article navigation"><a href="../../">Home</a><a href="../../#blog">Blog</a><a href="${escape(article.gistUrl)}">EXP <span aria-hidden="true">↗</span></a></nav>
+    </div>
+  </header>
+  <main id="article" class="article-shell">
+    <header class="article-hero">
+      <a class="article-back" href="../../#blog"><span aria-hidden="true">←</span> Back to blog</a>
+      <p class="eyebrow">${escape(article.category)}</p>
+      <h1>${escape(article.title)}</h1>
+      <p class="article-dek">${escape(article.description)}</p>
+      <div class="article-meta"><time datetime="${escape(article.published)}">${escape(article.dateLabel)}</time><span>${escape(article.readingTime)}</span><span>By ${escape(site.name)}</span></div>
+      <div class="tag-list">${article.tags.map(tag => `<span>${escape(tag)}</span>`).join('')}</div>
+    </header>
+    <div class="article-layout">
+      <aside class="article-toc"><p>ON THIS PAGE</p><nav aria-label="文章目录">${article.toc.map(([id, label], index) => `<a href="#${escape(id)}"><span>${String(index + 1).padStart(2, '0')}</span>${escape(label)}</a>`).join('')}</nav><a class="toc-source" href="${escape(article.gistUrl)}">View EXP on Gist <span aria-hidden="true">↗</span></a></aside>
+      <article class="article-content">${article.content}</article>
+    </div>
+  </main>
+  <footer class="site-footer"><div class="footer-inner"><p>© ${new Date().getUTCFullYear()} ${escape(site.name)}</p><p>Program analysis · Software security</p><a href="#article">返回顶部 <span aria-hidden="true">↑</span></a></div></footer>
+</body>
+</html>`;
+
 await mkdir(path.join(output, 'assets'), { recursive: true });
 await writeFile(path.join(output, 'index.html'), html);
+for (const article of articles) {
+  const articleDirectory = path.join(output, 'blog', article.slug);
+  await mkdir(articleDirectory, { recursive: true });
+  await writeFile(path.join(articleDirectory, 'index.html'), articleHtml(article));
+}
 for (const asset of ['style.css', 'favicon.svg']) await copyFile(path.join(root, 'assets', asset), path.join(output, 'assets', asset));
 await writeFile(path.join(output, '.nojekyll'), '');
 await writeFile(path.join(output, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${site.url}sitemap.xml\n`);
-await writeFile(path.join(output, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${escape(site.url)}</loc></url></urlset>\n`);
+await writeFile(path.join(output, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${escape(site.url)}</loc></url>${articles.map(article => `<url><loc>${escape(articleUrl(article))}</loc><lastmod>${escape(article.published)}</lastmod></url>`).join('')}</urlset>\n`);
 await writeFile(path.join(output, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found | ${escape(site.name)}</title><style>body{margin:10vh auto;padding:24px;max-width:640px;background:#faf9f6;color:#183f36;font:18px/1.7 system-ui}h1{font:48px Georgia,serif}a{color:inherit}</style></head><body><p>404 / PAGE NOT FOUND</p><h1>Let’s find your way back.</h1><p>This page may have moved or the link may be incorrect.</p><a href="${escape(site.url)}">Return to ${escape(site.name)}’s homepage →</a></body></html>`);
 console.log(`Built homepage: ${path.join(output, 'index.html')}`);

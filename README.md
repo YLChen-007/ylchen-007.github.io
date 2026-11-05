@@ -4,7 +4,7 @@
 
 **https://ylchen-007.github.io/**
 
-页面包含个人简介、研究方向、精选论文、开源贡献、研究数据、安全研究及联系方式。网页本身完全静态，不需要数据库、第三方字体、JavaScript 或付费服务。
+页面包含个人简介、研究方向、精选论文、开源贡献、研究数据、安全研究、技术博客及联系方式。网页本身完全静态，不需要数据库、第三方字体、客户端 JavaScript 或付费服务。
 
 ## 更新内容
 
@@ -17,7 +17,11 @@
 - `disclosures`：已公开的漏洞报告。
 - `email`：联系邮箱。
 
-视觉样式位于 `assets/style.css`，页面结构位于 `scripts/build.mjs`。
+博客正文位于 `content/`，每篇文章由独立的 `.mjs` 内容文件描述。当前文章：
+
+- `content/htmlparser-quadratic-dos.mjs`：CVE-2026-15308 / CPython `HTMLParser` 算法复杂度 DoS 源码分析与网络 EXP。
+
+视觉样式位于 `assets/style.css`，首页与文章页结构位于 `scripts/build.mjs`。构建结果会同时生成首页、`/blog/<slug>/` 永久链接和 sitemap 条目。
 
 可以直接在 GitHub 网页中编辑这些文件并提交到 `main`。GitHub Actions 会构建、检查并自动更新网站，不需要手动上传 `dist/`。
 
