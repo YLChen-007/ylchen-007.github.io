@@ -148,7 +148,7 @@ exp_client.py 调用 HTMLParser.feed()
 | Python 3.14.7 | 相同恶意响应 | 1,280,012 | 20,001 | 0.027204 s |
 
 - **118.76×：** Python 3.14.4 恶意响应 / 正常响应；
-- **116.13×：** Python 3.14.4 / 3.14.7 相同恶意响应。
+- **116.13×：** Python 3.14.4 / 3.14.7 相同恶意响应。（前后版本对比）
 
 两个版本收到完全相同的恶意响应，差异落在解析器实现，而不是服务端数据。客户端的 `response.read(64)` 决定 `feed()` 边界；即使 TCP 合并服务端写入，应用仍以最多 64 字节为单位调用解析器。
 
@@ -177,5 +177,3 @@ exp_client.py 调用 HTMLParser.feed()
 - [CPython PR #153031](https://github.com/python/cpython/pull/153031)
 - [CPython v3.15.0b1 源码](https://github.com/python/cpython/blob/v3.15.0b1/Lib/html/parser.py)
 - [有界网络 EXP](https://gist.github.com/YLChen-007/a5f267d2d8769366baaa32de6386de6e)
-
-CVE 记录将 Edward-x（YLChen-007）列为报告者，Serhiy Storchaka 列为修复开发者，Gregory P. Smith 列为修复审阅者，Seth Larson 列为协调者。
