@@ -51,7 +51,20 @@ for (const article of articles) {
 }
 
 assert.deepEqual((await readdir(root)).sort(), ['.nojekyll', '404.html', 'assets', 'blog', 'index.html', 'robots.txt', 'sitemap.xml'].sort(), 'Unexpected public files');
-assert.deepEqual((await readdir(path.join(root, 'assets'))).sort(), ['favicon.svg', 'style.css'], 'Unexpected public assets');
+assert.deepEqual((await readdir(path.join(root, 'assets'))).sort(), ['blog', 'favicon.svg', 'style.css'], 'Unexpected public assets');
+const dragonflyDiagramDirectory = path.join(root, 'assets', 'blog', 'dragonfly2-downloadtinyfile-ssrf-analysis');
+assert.deepEqual(
+  (await readdir(dragonflyDiagramDirectory)).sort(),
+  [
+    '01-vulnerability-chain.svg',
+    '02-component-architecture.svg',
+    '03-metadata-relations.svg',
+    '04-trust-boundaries.svg',
+    '05-normal-tiny-flow.svg',
+    '06-redirect-exploit-flow.svg'
+  ],
+  'Unexpected Dragonfly2 article diagrams'
+);
 assert.deepEqual((await readdir(path.join(root, 'blog'))).sort(), articles.map(article => article.slug).sort(), 'Unexpected blog routes');
 for (const file of ['404.html', 'sitemap.xml', 'robots.txt']) await access(path.join(root, file));
 console.log('PASS: homepage, Markdown blog articles, metadata, links, sitemap, assets, and public-file allowlist.');

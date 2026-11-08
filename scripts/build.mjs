@@ -1,4 +1,4 @@
-import { mkdir, writeFile, copyFile, rm } from 'node:fs/promises';
+import { cp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import site from '../site.config.mjs';
@@ -132,14 +132,14 @@ const articleHtml = article => `<!doctype html>
 </html>`;
 
 await rm(output, { recursive: true, force: true });
-await mkdir(path.join(output, 'assets'), { recursive: true });
+await mkdir(output, { recursive: true });
 await writeFile(path.join(output, 'index.html'), html);
 for (const article of articles) {
   const articleDirectory = path.join(output, 'blog', article.slug);
   await mkdir(articleDirectory, { recursive: true });
   await writeFile(path.join(articleDirectory, 'index.html'), articleHtml(article));
 }
-for (const asset of ['style.css', 'favicon.svg']) await copyFile(path.join(root, 'assets', asset), path.join(output, 'assets', asset));
+await cp(path.join(root, 'assets'), path.join(output, 'assets'), { recursive: true });
 await writeFile(path.join(output, '.nojekyll'), '');
 await writeFile(path.join(output, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${site.url}sitemap.xml\n`);
 await writeFile(path.join(output, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${escape(site.url)}</loc></url>${articles.map(article => `<url><loc>${escape(articleUrl(article))}</loc><lastmod>${escape(article.published)}</lastmod></url>`).join('')}</urlset>\n`);

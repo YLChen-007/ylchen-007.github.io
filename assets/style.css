@@ -320,6 +320,8 @@ ul, ol { padding-left: 1.25rem; }
 .article-content code { padding: .12em .35em; color: #23483e; background: #e9eee8; border: 1px solid #dce3da; border-radius: 3px; font: .88em/1.5 var(--mono); }
 .article-content pre { margin: 25px 0; padding: 22px 24px; overflow-x: auto; color: #e9f0eb; background: #16352e; border: 1px solid #254a40; border-radius: 3px; font: 12px/1.75 var(--mono); tab-size: 2; }
 .article-content pre code { padding: 0; color: inherit; background: transparent; border: 0; border-radius: 0; font: inherit; }
+.article-diagram { margin: 28px 0; padding: 20px; overflow-x: auto; background: #fff; border: 1px solid var(--line); border-radius: 3px; }
+.article-diagram img { display: block; width: 100%; min-width: 560px; height: auto; margin: 0 auto; }
 .article-content ol, .article-content ul { margin: 0 0 23px; padding-left: 1.35rem; }
 .article-content li { margin-bottom: 8px; padding-left: 4px; }
 .article-content blockquote { margin: 28px 0; padding: 20px 22px; background: #edf0e9; border: 1px solid #d9e0d5; border-left: 3px solid #648272; border-radius: 2px; }
@@ -406,6 +408,7 @@ ul, ol { padding-left: 1.25rem; }
   .article-content { font-size: 15px; }
   .article-content h2 { font-size: 28px; }
   .article-content pre { margin-left: -5px; margin-right: -5px; padding: 18px; font-size: 11px; }
+  .article-diagram { margin-left: -5px; margin-right: -5px; padding: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -429,7 +432,7 @@ ul, ol { padding-left: 1.25rem; }
   .section { padding: 20px 0; }
   .section-heading { margin-bottom: 16px; }
   .section-heading h2 { font-size: 22px; }
-  .publication, .interest, .education-item, .contact-section, .blog-card, .article-content blockquote, .table-wrap { break-inside: avoid; }
+  .publication, .interest, .education-item, .contact-section, .blog-card, .article-content blockquote, .article-diagram, .table-wrap { break-inside: avoid; }
   .publication-title { font-size: 17px; }
   .interest-body p, .authors { font-size: 9pt; }
   .venue { background: transparent; padding-left: 0; }
