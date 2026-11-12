@@ -30,46 +30,11 @@ gistUrl: "https://gist.github.com/YLChen-007/046fc4415a2f4e0d97ef9ee570fad0ae"
 
 ## 漏洞整体攻击序列
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor A as 攻击者
-    actor V as 受害者
-    participant O as orchestrator.py（父进程）
-    participant I as init_status.py
-    participant G as get_task.py（子进程）
-    participant T as TaskGraph
-    participant C as orchestrator.copy_tree()（被 G 导入）
-    participant F as 文件系统
-
-    A->>V: 提供恶意仓库<br/>嵌套 YAML + passwd
-    V->>O: 使用恶意 YAML 和仓库 work_dir 正常启动
-    O->>I: _init_workflow(--yaml, --work-dir)
-    I->>F: 写入 .workflow/status.json<br/>保存 workflow 与 work_dir
-    I-->>O: 初始化完成
-
-    O->>G: ask_get_task(work_dir)<br/>启动 get_task.py
-    G->>F: 读取 status.json 和恶意 workflow YAML
-    F-->>G: config["nodes"] 含 id: ".."
-    G->>G: ID 校验只拒绝 "/"<br/>因此 ".." 通过
-    G->>T: materialize(config["nodes"])
-    T->>F: 加载 level1/level2/level3.yaml
-    T->>T: 父 ID + "/" + 子 ID
-    T-->>G: tid = ../../../sensitive
-
-    G->>G: collect_checkpoint_targets()<br/>rollback_to → ../../../sensitive
-    G->>G: 选择首个 execute 任务<br/>execute_ids 含相同 tid
-    G->>G: create_checkpoints()<br/>两条数据流匹配
-    G->>C: copy_tree(work_dir,<br/>.workflow/checkpoints/../../../sensitive)
-    C->>F: cp -a malicious-repo/passwd<br/>到穿越目标目录
-    F->>F: 解析 ".." 为父目录<br/>目标变为 sandbox/sensitive/passwd
-    F-->>C: 覆盖已有同名 passwd
-    C-->>G: checkpoint 创建完成
-
-    Note over G,F: 覆盖发生在任务批次返回之前；<br/>不需要真实 Agent，也没有执行 rollback
-    G-->>O: 返回待派发任务批次
-    O->>O: dispatch_batch() 和 Agent 阶段随后才发生
-```
+<figure class="article-diagram">
+  <a href="../../assets/blog/cannbot-task-id-path-traversal/01-attack-sequence.svg" title="点击查看完整 SVG 原图">
+    <img src="../../assets/blog/cannbot-task-id-path-traversal/01-attack-sequence.svg" alt="CANNBot 嵌套任务 ID 路径穿越与 checkpoint 文件覆盖攻击时序" loading="lazy" style="width: 1800px; min-width: 1800px; max-width: none;">
+  </a>
+</figure>
 
 图中的 `orchestrator.py（父进程）` 是正常命令入口；`get_task.py` 由它作为子进程启动。`orchestrator.copy_tree()` 并不表示控制流重新进入父进程：`get_task.py` 通过 `import orchestrator as orch` 在自己的进程内复用该函数。最关键的时序是 `copy_tree()` 先完成文件覆盖，`get_task.py` 随后才把任务批次返回给父进程，因此真实 Agent 和 rollback 都不是触发覆盖的必要条件。
 
